@@ -1,0 +1,69 @@
+?RCS: $Id: d_pthread_y.U,v $
+?RCS:
+?RCS: Copyright (c) 1998 Andy Dougherty
+?RCS:
+?RCS: You may distribute under the terms of either the GNU General Public
+?RCS: License or the Artistic License, as specified in the README file.
+?RCS:
+?MAKE:d_pthread_yield d_sched_yield: Compile Setvar cat rm
+?MAKE:	-pick add $@ %<
+?S:d_pthread_yield:
+?S:	This variable conditionally defines the HAS_PTHREAD_YIELD
+?S:	symbol if the pthread_yield routine is available to yield
+?S:	the execution of the current thread.
+?S:.
+?S:d_sched_yield:
+?S:	This variable conditionally defines the HAS_SCHED_YIELD
+?S:	symbol if the sched_yield routine is available to yield
+?S:	the execution of the current thread.
+?S:.
+?C:HAS_PTHREAD_YIELD:
+?C:	This symbol, if defined, indicates that the pthread_yield 
+?C:	routine is available to yield the execution of the current
+?C:	thread.
+?C:.
+?C:HAS_SCHED_YIELD:
+?C:	This symbol, if defined, indicates that the sched_yield
+?C:	routine is available to yield the execution of the current
+?C:	thread.
+?C:.
+?H:#$d_pthread_yield HAS_PTHREAD_YIELD	/**/
+?H:#$d_sched_yield HAS_SCHED_YIELD	/**/
+?H:.
+?LINT: set d_pthread_yield d_sched_yield
+
+: see whether the various POSIXish _yields exist within given cccmd
+$cat >try.c <<EOP
+#include <pthread.h>
+main() {
+	YIELD();
+	exit(0);
+}
+EOP
+: see if pthread_yield exists within given cccmd,
+: if we do not usethreads this may well end up undef.
+set try -DYIELD=pthread_yield
+if eval $compile; then
+    val="$define"
+    echo 'pthread_yield() found.' >&4
+else
+    val="$undef"
+    echo 'pthread_yield() NOT found.' >&4
+fi
+set d_pthread_yield
+eval $setvar
+
+: see if sched_yield exists within given cccmd,
+: if we do not usethreads this may well end up undef.
+set try -DYIELD=sched_yield
+if eval $compile; then
+    val="$define"
+    echo 'sched_yield() found.' >&4
+else
+    val="$undef"
+    echo 'sched_yield() NOT found.' >&4
+fi
+set d_sched_yield
+eval $setvar
+$rm -f try try.*
+

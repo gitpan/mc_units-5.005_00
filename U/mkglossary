@@ -1,0 +1,96 @@
+#!/usr/local/bin/perl -w
+use File::Basename;
+
+# WARNING:  This is site-specific.  Change to the location
+# where you have installed dist-3.0PL70.
+@std_units = glob('/opt/dist/lib//U/*.U');
+
+chdir U if -d './U';
+@perl_units = glob('../U/*/*.U');
+push(@perl_units, @std_units);
+
+# Get the list of config.sh symbols.  Be sure this is up to date!
+# (I run the U/mksample script first to be sure.)
+open(WANTED, "sort ../Porting/config.sh|") || die 'Open ../Wanted';
+
+print <<'EOM';
+This file contains a description of all the shell variables whose value is
+determined by the Configure script.  Variables intended for use in C
+programs (e.g. I_UNISTD) are already described in config_h.SH.  [`configpm'
+generates pod documentation for Config.pm from this file--please try to keep
+the formatting regular.]
+
+EOM
+
+symbol:  while (defined($var = <WANTED>)) {
+    chomp $var;
+    next symbol if $var =~ /^#/;   # Skip comments
+    next symbol if $var =~ /^$/;
+    ($var, $val) = split(/=/, $var, 2);
+    $gotit = 0;
+    # Symbol "foo" is probably defined in unit "foo.U", so look there first.
+    $probably = '/dev/null';
+    foreach $file (@perl_units) {
+	if ($file =~ /$var.U$/) {
+	    $probably = $file;
+	    last;
+	}
+    }
+
+    foreach $file ($probably, @perl_units) {
+	open(FH, "<$file") || die "Trying to open $file $!";
+	$base = basename($file);
+	while (<FH>) {
+	    if (/^\?S:$var[ \t:]/ .. /^\?S:.$/) {
+		if ($gotit == 0) {
+		    print "$var ($base):\n";
+		    $gotit = 1;
+		}
+		else {
+		    s/^\?S:.$//;  # Delete trailing line
+		    s/^\?S://;    # Remove leading ?S: markers.
+		    s/^ /\t/;	  # Ensure all lines begin with tabs.
+		    print;
+		}
+	    }
+	}
+	close(FH) || die "Closing $file $!";
+	next symbol if ($gotit == 1);
+    }
+    # Perhaps $var is a program name in Loc.U.  Find Loc.U either in
+    # the local perl units or in the default location.
+    unit: foreach $file (@perl_units) {
+	next unit unless ($file =~ /Loc.U$/);
+	$base = basename($file);
+	open(FH, "<$file") || die "Trying to open $file $!";
+	while (<FH>) {
+	    if (/^\?$var:$var$/) {
+		print "$var ($base):\n";
+		$gotit = 1;
+		if ($val eq "''") {
+		    print <<EOMSG
+	This variable is defined but not used by Configure.
+	The value is a plain $val and is not useful.
+
+EOMSG
+		}
+		else {
+		    # If we didn't have d_portable, this info might be
+		    # useful, but it still won't help with non-standard
+		    # stuff if perl is built on one system but installed
+		    # on others (this is common with Linux distributions,
+		    # for example).
+		    print <<EOMSG
+	This variable is be used internally by Configure to determine the
+	full pathname (if any) of the $var program.  After Configure runs,
+	the value is reset to a plain "$var" and is not useful.
+
+EOMSG
+		}
+	    }
+	}
+	close(FH) || die "Closing $file $!";
+	next symbol if ($gotit == 1);
+    }
+    warn "Couldn't find $var\n" if ($gotit == 0);
+}

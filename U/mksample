@@ -1,0 +1,32 @@
+#!/bin/sh
+# This is the script I use to keep the Porting/ stuff up-to-date
+# with the latest Configure.
+#  Andy Dougherty   July 14, 1998
+
+rm -f config.sh Policy.sh
+sh Configure -Dprefix=/opt/perl -Doptimize=-O -Dusethreads \
+	-Dcf_by='yourname' \
+	-Dcf_email='yourname@yourhost.yourplace.com' \
+	-Dperladmin='yourname@yourhost.yourplace.com' \
+	-Dmydomain='.yourplace.com' \
+	-Dmyhostname='yourhost' \
+	-dE
+cp config.sh Porting/config.sh
+sh config_h.SH
+cat <<'EOCP' > Porting/config_H
+/* This file (config_H) is a sample config.h file.  If you are unable
+   to successfully run Configure, copy this file to config.h and
+   edit it to suit your system.
+*/
+EOCP
+cat config.h >> Porting/config_H
+rm config.sh config.h
+if newer Configure Porting/Glossary; then
+    U/mkglossary > Porting/Glossary
+    cd ./Porting
+    patch < ../U/Glossary.patch
+    if test -f Glossary.orig -o -f Glossary.rej; then
+	echo 'Check possible failed patch to Porting/Glossary!'
+	exit 2
+    fi
+fi

@@ -1,0 +1,75 @@
+?RCS: $Id: usethreads.U,v $
+?RCS:
+?RCS: Copyright (c) 1998 Andy Dougherty
+?RCS:
+?RCS: You may distribute under the terms of either the GNU General Public
+?RCS: License or the Artistic License, as specified in the README file.
+?RCS:
+?RCS: $Log: usethreads.U,v $
+?RCS:
+?MAKE:usethreads d_oldpthreads: Myread Oldconfig Setvar test
+?MAKE:	-pick add $@ %<
+?Y:TOP
+?S:usethreads:
+?S:	This variable conditionally defines the USE_THREADS symbol,
+?S:	and indicates that Perl should be built to use threads.
+?S:.
+?X: I'm putting old_pthreads in this unit because it might eventually
+?X: be part of an automatic determination to see if we can use threads
+?X: at all.
+?S:d_oldpthreads:
+?S:	This variable conditionally defines the OLD_PTHREADS_API symbol,
+?S:	and indicates that Perl should be built to use the old
+?S:	draft POSIX threads API.  This is only potneially meaningful if
+?S:	usethreads is set.
+?S:.
+?C:USE_THREADS:
+?C:	This symbol, if defined, indicates that Perl should
+?C:	be built to use threads.
+?C:.
+?C:OLD_PTHREADS_API:
+?C:	This symbol, if defined, indicates that Perl should
+?C:	be built to use the old draft POSIX threads API.
+?C:.
+?H:#$usethreads	USE_THREADS		/**/
+?H:#$d_oldpthreads	OLD_PTHREADS_API		/**/
+?H:.
+?LINT:set usethreads d_oldpthreads
+?INIT:: set usethreads on the Configure command line to enable threads.
+?F:!usethreads.cbu
+?X: We should really have some explanatory text here, and some
+?X: automatic setting of sensible defaults.
+cat <<EOM
+
+Perl can be built to take advantage of threads, on some systems.
+To do so, Configure must be run with -Dusethreads.
+(See README.threads for details.)
+EOM
+case "$usethreads" in
+$define|true|[yY]*)	dflt='y';;
+*) dflt='n';;
+esac
+rp='Build a threading Perl?'
+. ./myread
+case "$ans" in
+y|Y)	val="$define" ;;     
+*)      val="$undef" ;;
+esac
+set usethreads
+eval $setvar 
+: Look for a hint-file generated 'call-back-unit'.  Now that the
+: user has specified if a threading perl is to be built, we may need 
+: to set or change some other defaults.
+if $test -f usethreads.cbu; then
+    . ./usethreads.cbu
+fi
+?X: Check out what kind of threads api we have
+case "$d_oldpthreads" in
+'')	: Configure tests would be welcome here.  For now, assume undef.
+	val="$undef" ;;
+*)	val="$d_oldpthreads" ;;
+esac
+set d_oldpthreads
+eval $setvar
+?X: Here we ought to set the appropriate ccflags.  For now, rely on hints.
+
